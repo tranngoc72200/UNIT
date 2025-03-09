@@ -7,15 +7,10 @@ INPUT_A AS (
 			        B.BANK_CODE,
 			        B.BANK_NAME,
 			        B.BANK_ACCOUNT_NAME ,   
-			        DB.CITAD_CODE,
-			        AH.START_DATE,
-			        AH.END_DATE,
-			        AH.HOLDING_TYPE,
-			        AH.RELEASE_DATE
+			        DB.CITAD_CODE
 			    FROM JCCE_PAYMENT_DETAIL D
-			    INNER JOIN DMS_CLIENT_BANK B ON D.AGENT_CODE = B.AGENT_CODE
-			    INNER JOIN DMS_BANK DB ON DB.CODE = B.BANK_CODE
-			    LEFT JOIN JCCE_AGENT_HOLDING AH ON AH.AGENT_CODE = D.AGENT_CODE
+			    LEFT JOIN DMS_CLIENT_BANK B ON D.AGENT_CODE = B.AGENT_CODE
+			    LEFT JOIN DMS_BANK DB ON DB.CODE = B.BANK_CODE
 ),
 
 --GET ADVANCE, BANK_RETURN
@@ -38,7 +33,7 @@ GET_Open_balance AS (
 						            WHEN I.TYPE_GROUP = 'COMMISSION'  AND I.TAX_NONTAX = 'Taxable' AND I.contract_type = 'SER'
 						            THEN I.AMOUNT - (I.TAX_RATE * I.AMOUNT)			            
             					ELSE 0  
-        					END) AS Advance,
+        						END) AS Advance,
 							
         					SUM(CASE WHEN I.TYPE_GROUP = 'Bank Return' AND  I.TAX_NONTAX = 'Non-taxble' THEN I.AMOUNT ELSE 0  END ) AS BANK_RETURN		
 						FROM INPUT_A I 
@@ -53,26 +48,20 @@ GET_RESULT_COMPENSATION AS (
 								I.AGENT_CODE,
 								I.TAX_RATE,
 								I.CUTOFF_DATE,
-								    SUM(CASE WHEN UPPER(I.type_group) = 'BONUS'  			      AND I.TAX_NONTAX = 'Taxable'	   THEN I.amount ELSE 0 END)  AS BONUS,
-	        					SUM(CASE WHEN UPPER(I.type_group) = 'ALLOWANCE' 	    	AND I.TAX_NONTAX = 'Taxable'	   THEN I.amount ELSE 0 END)  AS ALLOWANCE,
-	        					SUM(CASE WHEN UPPER(I.type_group) = 'COMMISSION'		    AND I.TAX_NONTAX = 'Taxable' 	   THEN I.amount ELSE 0 END)  AS COMMISSION,
-	        					SUM(CASE WHEN UPPER(I.type_group) = 'CONTEST' 			    AND I.TAX_NONTAX = 'Taxable'	   THEN I.amount ELSE 0 END)  AS CONTEST,
-	        					SUM(CASE WHEN UPPER(I.type_group) = 'GIFT' 				      AND I.TAX_NONTAX = 'Taxable'	   THEN I.amount ELSE 0 END)  AS GIFT,
-	        					SUM(CASE WHEN UPPER(I.type_group) = 'OTHER_INCOME' 		  AND I.TAX_NONTAX = 'Taxable'	   THEN I.amount ELSE 0 END)  AS OTHER_TAXABLE_INCOME,
-	        					SUM(CASE WHEN UPPER(I.type_group) = 'OTHER_DEDUCTION' 	AND I.TAX_NONTAX = 'Taxable' 	   THEN I.amount ELSE 0 END)  AS OTHER_TAXABLE_DEDUCTION,
-	        					SUM(CASE WHEN UPPER(I.type_group) = 'OTHER_INCOME'		  AND I.TAX_NONTAX = 'Non-taxble'  THEN I.amount ELSE 0 END)  AS OTHER_NON_TAXABLE_INCOME,
+								SUM(CASE WHEN UPPER(I.type_group) = 'BONUS'  			AND I.TAX_NONTAX = 'Taxable'	 THEN I.amount ELSE 0 END)  AS BONUS,
+	        					SUM(CASE WHEN UPPER(I.type_group) = 'ALLOWANCE' 		AND I.TAX_NONTAX = 'Taxable'	 THEN I.amount ELSE 0 END)  AS ALLOWANCE,
+	        					SUM(CASE WHEN UPPER(I.type_group) = 'COMMISSION'		AND I.TAX_NONTAX = 'Taxable' 	 THEN I.amount ELSE 0 END)  AS COMMISSION,
+	        					SUM(CASE WHEN UPPER(I.type_group) = 'CONTEST' 			AND I.TAX_NONTAX = 'Taxable'	 THEN I.amount ELSE 0 END)  AS CONTEST,
+	        					SUM(CASE WHEN UPPER(I.type_group) = 'GIFT' 				AND I.TAX_NONTAX = 'Taxable'	 THEN I.amount ELSE 0 END)  AS GIFT,
+	        					SUM(CASE WHEN UPPER(I.type_group) = 'OTHER_INCOME' 		AND I.TAX_NONTAX = 'Taxable'	 THEN I.amount ELSE 0 END)  AS OTHER_TAXABLE_INCOME,
+	        					SUM(CASE WHEN UPPER(I.type_group) = 'OTHER_DEDUCTION' 	AND I.TAX_NONTAX = 'Taxable' 	 THEN I.amount ELSE 0 END)  AS OTHER_TAXABLE_DEDUCTION,
+	        					SUM(CASE WHEN UPPER(I.type_group) = 'OTHER_INCOME'		AND I.TAX_NONTAX = 'Non-taxble'  THEN I.amount ELSE 0 END)  AS OTHER_NON_TAXABLE_INCOME,
 	        					SUM(CASE WHEN UPPER(I.type_group) = 'OTHER_DEDUCTION' 	AND I.TAX_NONTAX = 'Non-taxble'  THEN I.amount ELSE 0 END)  AS OTHER_NON_TAXABLE_DEDUCTION, 
-	        					SUM(CASE WHEN UPPER(I.type_group) = 'DEBT_CLEARANCE'	  AND I.TAX_NONTAX = 'Non-taxble'  THEN I.amount ELSE 0 END)  AS DEBT_CLEARANCE,
-	        					SUM(CASE WHEN UPPER(I.type_group) = 'WOFF' 				      AND I.TAX_NONTAX = 'Non-taxble'  THEN I.amount ELSE 0 END)  AS WOFF,
-	        					SUM(CASE WHEN UPPER(I.type_group) = 'WOFF' 				      AND I.TAX_NONTAX = 'Non-taxble'	 THEN -I.amount ELSE 0 END) AS WON, ---MANG GIÁ TRỊ ÂM
-								    SUM(CASE
-										       WHEN UPPER(I.TYPE_GROUP) = ''
-										       AND I.PAY_DATE BETWEEN I.START_DATE AND I.END_DATE
-										       THEN I.AMOUNT ELSE 0
-									      END
-								      ) AS HOLD_VALUE
-	        				FROM  INPUT_A I
-							GROUP BY I.ID, I.TAX_RATE, I.CUTOFF_DATE, I.contract_type, I.AGENT_CODE,
+	        					SUM(CASE WHEN UPPER(I.type_group) = 'DEBT_CLEARANCE'	AND I.TAX_NONTAX = 'Non-taxble'  THEN I.amount ELSE 0 END)  AS DEBT_CLEARANCE,
+	        					SUM(CASE WHEN UPPER(I.type_group) = 'WOFF' 				AND I.TAX_NONTAX = 'Non-taxble'  THEN I.amount ELSE 0 END)  AS WOFF,
+	        					SUM(CASE WHEN UPPER(I.type_group) = 'WOFF' 				AND I.TAX_NONTAX = 'Non-taxble'	 THEN -I.amount ELSE 0 END) AS WON ---MANG GIÁ TRỊ ÂM
+	        					FROM  INPUT_A I
+								GROUP BY I.ID, I.TAX_RATE, I.CUTOFF_DATE, I.contract_type, I.AGENT_CODE
 				),
 				
 --xác định kỳ trước đó	
@@ -80,83 +69,83 @@ PRE_AMOUNT AS (
 			    SELECT
 			        PSH.ID,
 			        PSH.PAY_DATE,
-			        PSH.TAXABLE_INCOME_M 		    AS PRE_TAXABLE_INCOME_M,
-			        PSH.ENDING_BALANCE 			    AS PRE_ENDING_BALANCE,
+			        PSH.TAXABLE_INCOME_M 		AS PRE_TAXABLE_INCOME_M,
+			        PSH.ENDING_BALANCE 			AS PRE_ENDING_BALANCE,
 			        PSH.PAYMENT_BANK_TRANSFER 	AS PRE_PAYMENT_BANK_TRANSFER
 			    FROM JCCE_PAYMENT_SUMMARY PSH
 			    INNER JOIN (
-      					        SELECT ID, MAX(CUTOFF_DATE) AS CUTOFF_DATE 
-      					        FROM JCCE_CUTOFF_CALENDAR	
-      					        WHERE CUTOFF_DATE < TO_DATE('2024-05-31 00:00:00', 'YYYY-MM-DD HH24:MI:SS') --p_cutoff_date
-      					            AND CUTOFF_TYPE = 'CNB_CUTOFF' --v_cutoff_type
-      					        GROUP BY ID
-			    		    ) PCD 
+					        SELECT ID, MAX(CUTOFF_DATE) AS CUTOFF_DATE 
+					        FROM JCCE_CUTOFF_CALENDAR	
+					        WHERE CUTOFF_DATE < TO_DATE('2024-05-31 00:00:00', 'YYYY-MM-DD HH24:MI:SS') --p_cutoff_date
+					            AND CUTOFF_TYPE = 'CNB_CUTOFF' --v_cutoff_type
+					        GROUP BY ID
+			    		) PCD 
 			    ON PSH.ID = PCD.ID AND PSH.PAY_DATE = PCD.CUTOFF_DATE
 ),
 	
 --TAXABLE INCOM M,Y	AND GET PREV VALUE
 FINAL_RESULT AS (
-        					SELECT 
-        				        GRC.ID,
-        				        GRC.contract_type,
-        				        GRC.TAX_RATE,
-        				        GRC.CUTOFF_DATE,
-        				        SUM(GRC.BONUS + GRC.ALLOWANCE + GRC.COMMISSION + GRC.CONTEST + GRC.GIFT + 
-        				            GRC.OTHER_TAXABLE_INCOME + GRC.OTHER_TAXABLE_DEDUCTION) AS TAXABLE_INCOME_M,--- TAXABLE_INCOME_M THÁNG HIỆN TẠI
-        				        
-        				         SUM(
-        					        	(GRC.BONUS + GRC.ALLOWANCE + GRC.COMMISSION + GRC.CONTEST + GRC.GIFT + 
-        	            					GRC.OTHER_TAXABLE_INCOME + GRC.OTHER_TAXABLE_DEDUCTION) + NVL(PA.PRE_TAXABLE_INCOME_M, 0) -- =LŨY THỪA CỦA TAXABLE_INCOME_M
-                    				) AS TAXABLE_INCOME_Y, 
-        				            
-        				       	SUM(PA.PRE_ENDING_BALANCE) AS BALANCE_FORWARD,
-        				        SUM(-PA.PRE_PAYMENT_BANK_TRANSFER) AS PAID		         
-        			    FROM GET_RESULT_COMPENSATION GRC
-        			    LEFT JOIN PRE_AMOUNT PA ON PA.ID = GRC.ID
-            			GROUP BY GRC.ID, GRC.contract_type, GRC.TAX_RATE, GRC.CUTOFF_DATE
-		    ),
+					SELECT 
+				        GRC.ID,
+				        GRC.contract_type,
+				        GRC.TAX_RATE,
+				        GRC.CUTOFF_DATE,
+				        SUM(GRC.BONUS + GRC.ALLOWANCE + GRC.COMMISSION + GRC.CONTEST + GRC.GIFT + 
+				            GRC.OTHER_TAXABLE_INCOME + GRC.OTHER_TAXABLE_DEDUCTION) AS TAXABLE_INCOME_M,--- TAXABLE_INCOME_M THÁNG HIỆN TẠI
+				        
+				         SUM(
+					        	(GRC.BONUS + GRC.ALLOWANCE + GRC.COMMISSION + GRC.CONTEST + GRC.GIFT + 
+	            					GRC.OTHER_TAXABLE_INCOME + GRC.OTHER_TAXABLE_DEDUCTION) + NVL(PA.PRE_TAXABLE_INCOME_M, 0) -- =LŨY THỪA CỦA TAXABLE_INCOME_M
+            				) AS TAXABLE_INCOME_Y, 
+				            
+				       	SUM(PA.PRE_ENDING_BALANCE) AS BALANCE_FORWARD,
+				        SUM(-PA.PRE_PAYMENT_BANK_TRANSFER) AS PAID		         
+			    FROM GET_RESULT_COMPENSATION GRC
+			    LEFT JOIN PRE_AMOUNT PA ON PA.ID = GRC.ID
+    			GROUP BY GRC.ID, GRC.contract_type, GRC.TAX_RATE, GRC.CUTOFF_DATE
+		),
 		
 --GET TAX_Y, TAX_M, INCOME_AFTER_TAX, TAX_HOLD_Y, TAX_HOLD_M
 TAX AS(
-      		  SELECT 
-      			ID,
-      			contract_type,
-      			TAX_RATE,
-      			CASE 
-               WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y <= 100000000 THEN 0
-               WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y > 100000000  THEN ROUND(-TAXABLE_INCOME_Y * (TAX_RATE/100))
-               WHEN contract_type = 'SER' THEN ROUND(-TAXABLE_INCOME_Y * (TAX_RATE/100))
-              ELSE 0
-            END AS TAX_Y,
-            CASE 
-               WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y <= 100000000 THEN 0  			  
-               WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y > 100000000  THEN ROUND(-TAXABLE_INCOME_M * (TAX_RATE/100))        
-               WHEN contract_type = 'SER' THEN ROUND(-TAXABLE_INCOME_M * (TAX_RATE/100)) 
-               ELSE 0
-            END AS TAX_M,
+		SELECT 
+			ID,
+			contract_type,
+			TAX_RATE,
+			CASE 
+            	WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y <= 100000000 THEN 0
+            	WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y > 100000000  THEN ROUND(-TAXABLE_INCOME_Y * (TAX_RATE/100))
+            	WHEN contract_type = 'SER' THEN ROUND(-TAXABLE_INCOME_Y * (TAX_RATE/100))
+            ELSE 0
+        	END AS TAX_Y,
+        	CASE 
+            	WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y <= 100000000 THEN 0  			  
+            	WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y > 100000000  THEN ROUND(-TAXABLE_INCOME_M * (TAX_RATE/100))        
+            	WHEN contract_type = 'SER' THEN ROUND(-TAXABLE_INCOME_M * (TAX_RATE/100)) 
+            ELSE 0
+        	END AS TAX_M,
         	
         	(
-  				  CASE 
-      					WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y <= 100000000 THEN 0
-      					WHEN contract_type = 'FC'  THEN ROUND(-TAXABLE_INCOME_M * (TAX_RATE/100))
-      					WHEN contract_type = 'SER' THEN ROUND(-TAXABLE_INCOME_M * (TAX_RATE/100))
-    					ELSE 0
-  				  END 
-  				  + 
-  				 CASE 
-    					WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y <= 100000000 THEN 0
-    					WHEN contract_type = 'FC'  THEN ROUND(-TAXABLE_INCOME_Y * (TAX_RATE/100))
-    					WHEN contract_type = 'SER' THEN ROUND(-TAXABLE_INCOME_Y * (TAX_RATE/100))
-  					ELSE 0
-  				 END
+				CASE 
+					WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y <= 100000000 THEN 0
+					WHEN contract_type = 'FC'  THEN ROUND(-TAXABLE_INCOME_M * (TAX_RATE/100))
+					WHEN contract_type = 'SER' THEN ROUND(-TAXABLE_INCOME_M * (TAX_RATE/100))
+					ELSE 0
+				END 
+				+ 
+				CASE 
+					WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y <= 100000000 THEN 0
+					WHEN contract_type = 'FC'  THEN ROUND(-TAXABLE_INCOME_Y * (TAX_RATE/100))
+					WHEN contract_type = 'SER' THEN ROUND(-TAXABLE_INCOME_Y * (TAX_RATE/100))
+					ELSE 0
+				END
         	) AS INCOME_AFTER_TAX,
         	
         	CASE 
             	WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y <= 100000000    	    -- Nếu YTD <= 100tr thì X0.5%
-            	THEN ROUND(-TAXABLE_INCOME_Y * (TAX_RATE/100))
+            		THEN ROUND(-TAXABLE_INCOME_Y * (TAX_RATE/100))
             	WHEN contract_type = 'FC'  THEN 0         								-- Nếu YTD > 100tr thì =0
             	WHEN contract_type = 'SER' THEN 0        								-- Nếu tax_rate = 10 thì = 0
-              ELSE 0
+            ELSE 0
         	END AS TAX_HOLD_Y,      
         	CASE 
             	WHEN contract_type = 'FC'  AND TAXABLE_INCOME_Y <= 100000000    	    -- Nếu YTD <= 100tr thì X.5%
@@ -199,22 +188,52 @@ ENDING_BALANCE AS (
 					LEFT JOIN NET_INCOME N ON N.ID = FR.ID
 					LEFT JOIN GET_Open_balance GOB ON GOB.ID = FR.ID
 					GROUP BY FR.ID
-			)
+			),
 
---HOLDING
-HOLDING_VALUE AS(
-					SELECT 
-						GRC.HOLD_VALUE AS HOLD_BONUS
-						(CASE
-							WHEN I.HOLDING_TYPE = '' 
-							AND I.PAY_DATE BETWEEN I.START_DATE AND I.END_DATE
-							AND I.RELEASE_DATE BETWEEN I.START_DATE AND I.END_DATE
-							THEN GRC.HOLD_BONUS + 
-						END
-						) AS HOLD_RELEASE
-					FROM INPUT_A I
-					LEFT JOIN GET_RESULT_COMPENSATION GRC ON I.AGENT_CODE = GRC.AGENT_CODE
+
+--GET HOLDING PAYMENT
+HOLDING_PAYMENT AS (
+						SELECT								
+								(CASE 
+										WHEN AH.HOLD_TYPE = '02'
+											AND  AH.VALUE_TYPE = 'AMOUNT'
+											AND  I.PAY_DATE BETWEEN AH.START_DATE AND NVL(AH.END_DATE, p_cutoff_date)
+											AND AH.AGENT_CODE = I.AGENT_CODE
+										THEN (SELECT
+													SUM(CASE 
+															 WHEN AH.HOLD_TYPE = '02'
+															 AND  I.PAY_DATE BETWEEN AH.START_DATE AND NVL(AH.END_DATE, p_cutoff_date)
+															 AND AH.AGENT_CODE = I.AGENT_CODE
+														  	 THEN I.AMOUNT
+												  			 ELSE 0
+												  		END) 
+											  FROM INPUT_A I
+											  LEFT JOIN JCCE_AGENT_HOLDING AH ON  I.AGENT_CODE = AH.AGENT_CODE
+											  GROUP BY I.ID
+											 )	
+										 WHEN AH.HOLD_TYPE = '02'
+											AND  AH.VALUE_TYPE = 'Percentage'
+											AND  I.PAY_DATE BETWEEN AH.START_DATE AND NVL(AH.END_DATE, p_cutoff_date)
+											AND AH.AGENT_CODE = I.AGENT_CODE
+										 THEN (SELECT
+													SUM(CASE 
+															 WHEN AH.HOLD_TYPE = '02'
+															 AND  I.PAY_DATE BETWEEN AH.START_DATE AND NVL(AH.END_DATE, p_cutoff_date)
+															 AND AH.AGENT_CODE = I.AGENT_CODE
+												  			 THEN I.AMOUNT
+												  			 ELSE 0
+												  		END)
+												  	FROM INPUT_A I
+											  		LEFT JOIN JCCE_AGENT_HOLDING AH ON  I.AGENT_CODE = AH.AGENT_CODE
+											  		GROUP BY I.ID
+												  ) * AH.HOLD_VALUE
+										
+									ELSE 0
+									END)AS HOLD_PAYMENT
+						FROM INPUT_A I
+						LEFT JOIN JCCE_AGENT_HOLDING AH ON  I.AGENT_CODE = AH.AGENT_CODE
 )
+			
 /*
 INSERT INTO JCCE_PAYMENT_SUMMARY(
  CUTOFF_DATE
@@ -340,11 +359,13 @@ SELECT
 	--,TAX_HOLD_RETURN
 	--,PAYMENT_TYPE
 	,'' NOTE
-	,COALESCE(GRC.HOLD_BONUS, 0) AS HOLD_BONUS
+	,COALESCE(HP.HOLDING_PAYMENT,0) AS HOLDING_PAYMENT
 FROM INPUT_A I
 LEFT JOIN GET_RESULT_COMPENSATION GRC ON GRC.ID = I.ID
 LEFT JOIN GET_Open_balance GOB ON GOB.ID = I.ID
 LEFT JOIN FINAL_RESULT FR ON FR.ID = I.ID
 LEFT JOIN TAX T ON T.ID = I.ID
 LEFT JOIN NET_INCOME N ON N.ID = I.ID
-LEFT JOIN ENDING_BALANCE EB ON EB.ID = I.ID;
+LEFT JOIN ENDING_BALANCE EB ON EB.ID = I.ID
+LEFT JOIN HOLDING_PAYMENT HP ON HP.ID = I.ID
+;
