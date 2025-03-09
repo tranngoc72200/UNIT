@@ -193,45 +193,48 @@ ENDING_BALANCE AS (
 
 --GET HOLDING PAYMENT
 HOLDING_PAYMENT AS (
-						SELECT								
-								(CASE 
-										WHEN AH.HOLD_TYPE = '02'
-											AND  AH.VALUE_TYPE = 'AMOUNT'
-											AND  I.PAY_DATE BETWEEN AH.START_DATE AND NVL(AH.END_DATE, p_cutoff_date)
-											AND AH.AGENT_CODE = I.AGENT_CODE
-										THEN (SELECT
-													SUM(CASE 
-															 WHEN AH.HOLD_TYPE = '02'
-															 AND  I.PAY_DATE BETWEEN AH.START_DATE AND NVL(AH.END_DATE, p_cutoff_date)
-															 AND AH.AGENT_CODE = I.AGENT_CODE
-														  	 THEN I.AMOUNT
-												  			 ELSE 0
-												  		END) 
-											  FROM INPUT_A I
-											  LEFT JOIN JCCE_AGENT_HOLDING AH ON  I.AGENT_CODE = AH.AGENT_CODE
-											  GROUP BY I.ID
-											 )	
-										 WHEN AH.HOLD_TYPE = '02'
-											AND  AH.VALUE_TYPE = 'Percentage'
-											AND  I.PAY_DATE BETWEEN AH.START_DATE AND NVL(AH.END_DATE, p_cutoff_date)
-											AND AH.AGENT_CODE = I.AGENT_CODE
-										 THEN (SELECT
-													SUM(CASE 
-															 WHEN AH.HOLD_TYPE = '02'
-															 AND  I.PAY_DATE BETWEEN AH.START_DATE AND NVL(AH.END_DATE, p_cutoff_date)
-															 AND AH.AGENT_CODE = I.AGENT_CODE
-												  			 THEN I.AMOUNT
-												  			 ELSE 0
-												  		END)
-												  	FROM INPUT_A I
-											  		LEFT JOIN JCCE_AGENT_HOLDING AH ON  I.AGENT_CODE = AH.AGENT_CODE
-											  		GROUP BY I.ID
-												  ) * AH.HOLD_VALUE
-										
-									ELSE 0
-									END)AS HOLD_PAYMENT
-						FROM INPUT_A I
-						LEFT JOIN JCCE_AGENT_HOLDING AH ON  I.AGENT_CODE = AH.AGENT_CODE
+    SELECT
+        ID,
+        SUM_HOLD,
+        CASE 
+            WHEN VALUE_TYPE = 'AMOUNT' THEN SUM_HOLD
+            WHEN VALUE_TYPE = 'Percentage' THEN SUM_HOLD * HOLD_VALUE
+            ELSE 0
+        END AS HOLD_PAYMENT
+    FROM (
+         SELECT
+             I.ID,
+             SUM(
+                CASE 
+                   WHEN AH.HOLD_TYPE = '02'
+                        AND I.PAY_DATE BETWEEN AH.START_DATE AND NVL(AH.END_DATE, p_cutoff_date)
+                        AND AH.AGENT_CODE = I.AGENT_CODE
+                   THEN I.AMOUNT
+                   ELSE 0
+                END
+             ) AS SUM_HOLD,
+             MAX(
+                CASE 
+                   WHEN AH.HOLD_TYPE = '02'
+                        AND I.PAY_DATE BETWEEN AH.START_DATE AND NVL(AH.END_DATE, p_cutoff_date)
+                        AND AH.AGENT_CODE = I.AGENT_CODE
+                   THEN AH.VALUE_TYPE
+                   ELSE NULL
+                END
+             ) AS VALUE_TYPE,
+             MAX(
+                CASE 
+                   WHEN AH.HOLD_TYPE = '02'
+                        AND I.PAY_DATE BETWEEN AH.START_DATE AND NVL(AH.END_DATE, p_cutoff_date)
+                        AND AH.AGENT_CODE = I.AGENT_CODE
+                   THEN AH.HOLD_VALUE
+                   ELSE NULL
+                END
+             ) AS HOLD_VALUE
+         FROM INPUT_A I
+         LEFT JOIN JCCE_AGENT_HOLDING AH ON I.AGENT_CODE = AH.AGENT_CODE
+         GROUP BY I.ID
+    )
 )
 			
 /*
@@ -353,13 +356,12 @@ SELECT
 	,COALESCE(T.TAX_HOLD_M,0) AS TAX_HOLD_M
 	,COALESCE(T.TAX_HOLD_Y,0) AS TAX_HOLD_Y
 	--,TAX_PAID_M
-	,0 TAX_PAID_Y
-	,0 HOLD_PAYMENT
+	--,TAX_PAID_Y
 	--,PAYMENT_BANK_TRANSFER
 	--,TAX_HOLD_RETURN
 	--,PAYMENT_TYPE
 	,'' NOTE
-	,COALESCE(HP.HOLDING_PAYMENT,0) AS HOLDING_PAYMENT
+	,COALESCE(HP.HOLD_PAYMENT,0) AS HOLD_PAYMENT
 FROM INPUT_A I
 LEFT JOIN GET_RESULT_COMPENSATION GRC ON GRC.ID = I.ID
 LEFT JOIN GET_Open_balance GOB ON GOB.ID = I.ID
