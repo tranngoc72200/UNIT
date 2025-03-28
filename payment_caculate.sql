@@ -1,5 +1,5 @@
+--check avb
 WITH 
-
 --GET common data
 INPUT_A AS (
 			    SELECT 
